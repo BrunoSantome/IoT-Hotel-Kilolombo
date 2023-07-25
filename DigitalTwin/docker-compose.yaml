@@ -1,0 +1,12 @@
+version: '2'
+
+services: 
+  digital_twin:
+    build: ./digital_twin
+    environment: 
+      - MQTT_SERVER_ADDRESS=34.91.117.155
+      - MQTT_SERVER_PORT_1=1883
+      - MQTT_SERVER_PORT_2=1884
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./digital_twin/app:/etc/usr/src/app

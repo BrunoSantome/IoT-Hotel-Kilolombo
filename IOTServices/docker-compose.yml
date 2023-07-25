@@ -1,0 +1,78 @@
+version: '2'
+
+services:
+  mqtt-1:
+    build: ./MQTT-1
+    ports: 
+      - "1883:1883"
+    volumes: 
+      - "./MQTT-1/app/mosquitto.conf:/etc/mosquitto/mosquitto.conf"
+  mqtt-2:
+    build: ./MQTT-2
+    ports:
+     - "1884:1884"
+    volumes: 
+     - "./MQTT-2/app/mosquitto.conf:/etc/mosquitto/mosquitto.conf"
+
+  message_router: 
+    build: ./message_router
+    ports:
+     - '5002:5002'
+    environment:
+      - MQTT_SERVER_ADDRESS=34.91.117.155
+      - MQTT_SERVER_PORT_1=1883
+      - MQTT_SERVER_PORT_2=1884
+      - DATA_INGESTION_API_HOST=data_ingestion_microservice
+      - DATA_INGESTION_API_PORT=5000 
+      - API_HOST=0.0.0.0
+      - API_PORT=5002 
+      - PYTHONUNBUFFERED=1
+
+    volumes: 
+      - "./message_router/app:/etc/usr/src/app"
+    depends_on:
+      - mqtt-1
+      - mqtt-2
+      - data_ingestion_microservice
+  mariaDB: 
+    image: 'mariadb:latest'
+    environment:
+      - MYSQL_ROOT_PASSWORD=dso_db_root_password
+
+  data_ingestion_microservice:
+    build: ./data_ingestion_microservice
+    ports: 
+     - '5000:5000'
+    links: 
+     - "mariaDB:mariaDB"
+    environment: 
+     - HOST=0.0.0.0
+     - PORT=5000
+     - DB_HOST=mariaDB
+     - DB_USER=dso_db_user
+     - DB_PASSWORD=dso_db_password
+     - DB_NAME=dso_db
+    depends_on: 
+     - mariaDB
+    volumes:
+     - ./data_ingestion_microservice/app:/etc/usr/src/app   
+  frontend:
+    build: ./frontend
+    ports:
+      - '80:80'
+    volumes:
+      - ./frontend/app:/usr/local/apache2/htdocs
+  webapp_backend:
+    build: ./webapp_backend
+    ports:
+      - '5001:5001'
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5001
+      - DATA_INGESTION_API_ADDRESS=data_ingestion_microservice
+      - DATA_INGESTION_API_PORT=5000
+      - MESSAGE_ROUTER_API_ADDRESS=message_router
+      - MESSAGE_ROUTER_API_PORT=5002
+    volumes:
+      - ./webapp_backend/app:/etc/usr/src/app
+
